@@ -27,14 +27,30 @@ issue #16); the **New surface** column records which.
 
 ```
 kg/
-├── base.py        KgConnectorReaderBase / QueryReader / ParamReader / KgConnectorFeatureGroupBase
+├── base.py        Compatibility facade re-exporting reader, FeatureGroup, and composition bases
+├── reader_base.py Universal KgConnectorReaderBase and LoadContext
+├── readers.py     QueryReader and ParamReader per-call input flavors
+├── feature_group.py  KgConnectorFeatureGroupBase (reader-backed SourceFeatureGroup)
+├── class_guards.py  Class-definition-time connector validation guards
+├── composition.py   Property-mapping composition and narrowing helpers
+├── credentials.py   Credential-slot extraction and runtime validation
 ├── mixins.py      EntityFilterPropertyMixin / EntityFilterParamMixin / PaginationMixin / TraversalMixin / InferenceMixin
-├── errors.py      InvalidCredentialShape / MissingRequiredKeysError / PropertyMappingCollision / MissingEnvVarError
+├── optional_deps.py  Optional import roots for each connector family
+├── spec.py        KG wrapper for the mloda property_spec builder
+├── traversal.py  Shared bounded breadth-first graph traversal helpers
+├── validation.py Shared bounded-integer and value-validation helpers
+├── errors.py      Credential, parameter, mapping, tenant, memory-scope, and fixture errors
 ├── fixtures.py    Shared resource-cache loaders (load_json_fixture / load_rdf_graph / load_oxigraph_store / load_kuzu_database)
 ├── conftest.py    Autouse fixture clearing the resource caches between tests
-├── ontology/      Ontology registry for typed traversal (registry.py + tests/)
+├── ontology/      Typed traversal ontology (registry.py, models.py, dc_solver.py,
+│                  semantic_field.py, discovery.py, and tests/)
 ├── tests/
-│   ├── kg_contract.py             Universal abstract test base (5 adapter methods + 26 contract tests)
+│   ├── contract_adapters.py       Shared definitions of the 5 adapter methods
+│   ├── contract_credentials.py    Universal credential validation contracts
+│   ├── contract_params.py         Universal per-call parameter contracts
+│   ├── contract_surface.py        Universal credential-surface honesty contracts
+│   ├── contract_load.py           Universal load-path behavior contracts
+│   ├── kg_contract.py             Aggregates the four universal contract suites
 │   ├── _helpers.py                Shared run_query / make_valid_credentials helpers
 │   ├── _discovery.py              Reader discovery (import_all_kg_readers / walk_subclasses / ...)
 │   ├── _family_cases.py           Shared all-family usage registry (CASES) + discovery helpers
@@ -110,7 +126,7 @@ framework derives the rejection contract.
 A concrete plugin's test class subclasses the per-family `*ContractTestBase`
 (which itself subclasses `KgConnectorContractBase`) and implements 5 adapter
 methods (`connector_reader_class`, `valid_credentials`, `invalid_credentials`,
-`feature_under_test`, `expected_row_shape`). It inherits 26 universal contract
+`feature_under_test`, `expected_row_shape`). It inherits universal contract
 tests + per-family assertions for free. ~20-30 lines per concrete plugin.
 
 ## No-Docker testing policy
