@@ -79,11 +79,16 @@ jobs:
     needs: github_release
     if: needs.github_release.outputs.new_release_published == 'true'
     runs-on: ubuntu-24.04
+    # The PyPI upload uses a separate token; this job only reads GitHub.
+    permissions:
+      contents: read
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           ref: main
+          # Keep GITHUB_TOKEN out of .git/config during build and publish.
+          persist-credentials: false
 
       - name: Fetch changes on main
         run: git pull origin main
