@@ -258,3 +258,41 @@ class TestOxigraphSparqlReader(RdfContractTestBase):
         )
         rows = run_query("oxigraph_sparql", slot, feat)
         assert len(rows) == 2
+
+    def test_rdf12_quoted_triple_select_binding(self) -> None:
+        """An RDF 1.2 triple-term binding must not crash the SELECT reader."""
+        from open_kgo.feature_groups.kg.tests._helpers import run_query
+
+        feat = Feature(
+            "oxigraph_sparql__triple_select",
+            options=Options(
+                context={"query_text": "SELECT ?t WHERE { BIND(<<( <http://a> <http://b> <http://c> )>> AS ?t) }"}
+            ),
+        )
+        rows = run_query("oxigraph_sparql", self.valid_credentials()["oxigraph_sparql"], feat)
+        assert len(rows) == 1
+        assert isinstance(rows[0]["t"], str)
+        assert all(iri in rows[0]["t"] for iri in ("http://a", "http://b", "http://c"))
+
+    def test_rdf12_quoted_triple_construct_object(self) -> None:
+        """A quoted triple in a CONSTRUCT object must serialize safely."""
+        from open_kgo.feature_groups.kg.tests._helpers import run_query
+
+        feat = Feature(
+            "oxigraph_sparql__triple_construct",
+            options=Options(
+                context={
+                    "query_text": (
+                        "CONSTRUCT { <http://example.org/s> <http://example.org/p> "
+                        "<<( <http://a> <http://b> <http://c> )>> } WHERE { }"
+                    )
+                }
+            ),
+        )
+        rows = run_query("oxigraph_sparql", self.valid_credentials()["oxigraph_sparql"], feat)
+        assert len(rows) == 1
+        assert rows[0]["s"] == "http://example.org/s"
+        assert rows[0]["p"] == "http://example.org/p"
+        assert isinstance(rows[0]["o"], str)
+        assert all(iri in rows[0]["o"] for iri in ("http://a", "http://b", "http://c"))
+
