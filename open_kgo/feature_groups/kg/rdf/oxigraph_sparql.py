@@ -41,6 +41,17 @@ from open_kgo.feature_groups.kg.fixtures import _rejected_scheme, load_oxigraph_
 from open_kgo.feature_groups.kg.rdf.base import RdfSparqlFeatureGroup, RdfSparqlReader
 
 
+def _lexical(term: Any) -> str:
+    """Flatten a term without assuming RDF 1.2 quoted triples expose .value.
+
+    Ordinary RDF terms keep their existing lexical .value representation.
+    Triple terms use their deterministic N-Triples-like serialization.
+    """
+    if isinstance(term, pyoxigraph.Triple):
+        return str(term)
+    return str(term.value)
+
+
 class OxigraphSparqlReader(RdfSparqlReader):
     """pyoxigraph in-memory SPARQL reader.
 
@@ -108,7 +119,9 @@ class OxigraphSparqlReader(RdfSparqlReader):
                 # rdflib sibling yields rdflib term objects (URIRef / Literal)
                 # via ``row.asdict()``. oxigraph's ``.value`` drops datatype and
                 # language tags, so a consumer that needs typed terms must use
-                # the rdflib reader. The same ``.value`` flattening applies to
+                # the rdflib reader. Quoted RDF 1.2 triple terms instead use
+                # their string serialization, since they have no ``.value``.
+                # The same lexical flattening applies to
                 # the CONSTRUCT/DESCRIBE triple branch below: blank nodes emit
                 # their bare id (no ``_:`` prefix), and IRIs vs literals are
                 # indistinguishable plain strings in the emitted s/p/o rows.
@@ -120,7 +133,7 @@ class OxigraphSparqlReader(RdfSparqlReader):
                 for var in variables:
                     term = solution[var]
                     if term is not None:
-                        row[var.value] = term.value
+                        row[var.value] = _lexical(term)
                 rows.append(row)
                 if len(rows) >= ctx.result_limit:
                     break
@@ -131,7 +144,7 @@ class OxigraphSparqlReader(RdfSparqlReader):
 
         # CONSTRUCT / DESCRIBE -> iterator of pyoxigraph.Triple.
         for triple in result:
-            rows.append({"s": triple.subject.value, "p": triple.predicate.value, "o": triple.object.value})
+            rows.append({"s": _lexical(triple.subject), "p": _lexical(triple.predicate), "o": _lexical(triple.object)})
             if len(rows) >= ctx.result_limit:
                 break
         return rows
